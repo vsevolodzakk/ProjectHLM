@@ -4,8 +4,6 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    // Start is called before the first frame update
-
     [SerializeField] private Camera _mainCamera;
 
     [SerializeField] private float _speed;
@@ -14,17 +12,21 @@ public class PlayerController : MonoBehaviour
 
     private Vector2 _direction;
 
-    private Rigidbody2D _rb2d;
+    private Rigidbody2D _playerRb;
 
-    //[SerializeField] Rigidbody2D _weapon;
+    [SerializeField] Transform _weaponHoldPoint;
+    [SerializeField] private bool _weaponIsArmed;
 
-    void Start()
+    [SerializeField] Rigidbody2D _weapon;
+
+    private void Start()
     {
-        _rb2d = GetComponent<Rigidbody2D>();
+        _playerRb = GetComponent<Rigidbody2D>();
+        _weaponIsArmed = true;
+        //gameObject.GetComponent<Collider2D>().enabled = false;
     }
 
-    // Update is called once per frame
-    void Update()
+    private void Update()
     {
         _horizontal = Input.GetAxisRaw("Horizontal");
         _vertical = Input.GetAxisRaw("Vertical");
@@ -36,7 +38,7 @@ public class PlayerController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        _rb2d.MovePosition(_rb2d.position + _direction * _speed * Time.fixedDeltaTime);
+        _playerRb.MovePosition(_playerRb.position + _direction * _speed * Time.fixedDeltaTime);
     }
 
     private void AimToCursor()
@@ -47,14 +49,43 @@ public class PlayerController : MonoBehaviour
         _direction.Normalize();
 
         transform.up = _direction;
-        //if (Input.GetKeyDown(KeyCode.E))
-        //    ThrowWeapon();
+        if (Input.GetKeyDown(KeyCode.E) && _weaponIsArmed == true)
+            ThrowWeapon();
     }
 
-    //private void ThrowWeapon()
-    //{
-    //   float _force = 10f;
-    //   _weapon.AddForce(transform.up * _force, ForceMode2D.Impulse);
-    //    _weapon.transform.parent = null;
-    //}
+    private void ThrowWeapon()
+    {
+        Debug.Log("DROP");
+        _weaponIsArmed = false;
+        _weapon.transform.parent = null;
+        _weapon.simulated = true;
+        //float _force = 20f;
+        //_weapon.AddForce(transform.up * _force, ForceMode2D.Impulse);  
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        
+        
+    }
+
+    private void OnTriggerStay2D(Collider2D other)
+    {
+        Debug.Log("TOUCH");
+        if (other.CompareTag("Weapon") && _weaponIsArmed == false && Input.GetKeyDown(KeyCode.E))
+            PickWeapon();
+    }
+
+    private void PickWeapon()
+    {
+        Debug.Log("PICK");
+        _weapon.simulated = false;
+
+        _weapon.transform.parent = _weaponHoldPoint;
+
+        _weapon.transform.position = _weaponHoldPoint.position;
+        _weapon.transform.rotation = _weaponHoldPoint.rotation;
+
+        _weaponIsArmed = true;
+    }
 }
