@@ -7,19 +7,39 @@ public class GameDirector : MonoBehaviour
 {
     [SerializeField] private List<GameObject> _enemies = new List<GameObject> ();
 
+    private PlayerController _player;
+
+    [SerializeField] private Vector2 _shootNoizePosition;
+
+    public static GameDirector Instance { get; private set; }
+
+
+
+    public Vector2 ShootNoizePosition 
+    {
+        get { return _shootNoizePosition; }
+    }
+
     public List<GameObject> Enemies
     {
         get { return _enemies; }
     }
 
+    private void Awake()
+    {
+        Instance = this;
+    }
+
     private void OnEnable()
     {
         EnemyController.OnEnemyDeath += RemoveEnemyFromChain;
+        WeaponController.OnShotFired += LocateShotPosition; 
     }
 
     private void Start()
     {
-        DisplayEnemies();       
+        DisplayEnemies();   
+        _player = FindObjectOfType<PlayerController> ();
     }
 
     private void Update()
@@ -38,6 +58,11 @@ public class GameDirector : MonoBehaviour
         _enemies.RemoveAt(position);
     }
 
+    private void LocateShotPosition()
+    {
+        _shootNoizePosition = _player.transform.position;
+    }
+
     private void DisplayEnemies()
     {
         // Display chain of Enemies in the console
@@ -50,5 +75,6 @@ public class GameDirector : MonoBehaviour
     private void OnDisable()
     {
         EnemyController.OnEnemyDeath -= RemoveEnemyFromChain;
+        WeaponController.OnShotFired -= LocateShotPosition;
     }
 }

@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -7,92 +6,134 @@ public class EnemyController : MonoBehaviour
 {
     // Enemy AI states
     private enum State { PATROL, ALERT, ATTACK };
+    [SerializeField]private State _state;
 
-    private State _state;
-
-    private CircleCollider2D _viewCone;
-    private Ray2D _ray;
-    private RaycastHit2D _hit;
+    private bool _isAlive;
+    private bool _isAttack;
 
     [SerializeField] NavMeshAgent _agent;
     private bool _isGoingForward;
     private Vector2 _nextWaypoint;
     private float _angleDifference;
     private float _angleToTarget;
+    private float _agentWalkSpeed = 3.5f;
+    private float _agentRunSpeed = 8f;
     [SerializeField] private Transform[] _patrolRoute;
 
+    private Vector2 _lastKnownPlayerLocation;
+
+    private Animator _animator;
+
+    private GameDirector _gameDirector;
+    private PlayerController _player;
+
+    public bool IsAttack => _isAttack;
 
     // Enemy Death event
     public delegate void EnemyDeath(int position);
     public static event EnemyDeath OnEnemyDeath;
 
-    private GameDirector _gameDirector;
-    private PlayerController _player;
+    private void OnEnable()
+    {
+        WeaponController.OnShotFired += GetOnAlert;
+    }
 
     private void Start()
     {
+        _isAlive = true;
+
         _gameDirector = FindObjectOfType<GameDirector>();
         _player = FindObjectOfType<PlayerController>();
 
+        // Disable NavMeshAgent rotation
         _agent.updateRotation = false;
         _agent.updateUpAxis = false;
+
+        
+
+        _animator = GetComponentInChildren<Animator>();
 
         _state = State.PATROL;
 
         _isGoingForward = false;
+
+        Physics2D.queriesStartInColliders = false;
     }
 
     private void Update()
     {
-
-        _ray = new Ray2D(transform.position, _player.transform.position);
-
-        if (_state == State.PATROL)
+        if (_isAlive)
         {
-            PatrolLevel();
+            var _hitInfo = Physics2D.Raycast(transform.position, _player.transform.position - transform.position, 7f);
 
-            if (Physics2D.Raycast(transform.position, _player.transform.position, 5f, 0))
-                Debug.LogWarning("BUSTED!");
-        }
-
-        if(_state == State.ALERT)
-        {
-            // Alert and move to target
-            _agent.SetDestination(_player.transform.position);
-        }
-
-        
-
-        if (_agent.hasPath)
-        {
-            if (_nextWaypoint != (Vector2)_agent.path.corners[1])
+            if (_hitInfo.collider != null
+                    && _hitInfo.collider.GetComponent<PlayerController>()
+                    && Vector3.Angle(transform.up, _hitInfo.transform.position - transform.position) < 45f)
             {
-                // Rotate to Y-axis facing
-                StartCoroutine(RotateToWaypoint());
-                _nextWaypoint = _agent.path.corners[1];
-            }     
-        }
+                Debug.DrawLine(transform.position, _hitInfo.point, Color.magenta);
+                Debug.LogWarning("Busted!");
 
-        //Debug.DrawRay(transform.position, transform.up * 7f, Color.red);
-        //transform.rotation = Quaternion.LookRotation(transform.up, transform.forward);
+                _state = State.ATTACK;
 
-        // View cone for develop purpose
-        //Vector3 viewAngle1 = DirectionFromAngle(transform.eulerAngles.y, -45);
-        //Vector3 viewAngle2 = DirectionFromAngle(transform.eulerAngles.y, 45);
+                _lastKnownPlayerLocation = _hitInfo.point;  
+            }
+            else
+            {
+                Debug.DrawLine(transform.position, _player.transform.position, Color.yellow);
+            }
 
-        //Debug.DrawRay(transform.position, transform.up + viewAngle1 * 6f, Color.green);
-        //Debug.DrawRay(transform.position, transform.up + viewAngle2 * 6f, Color.blue);
+            if (_state == State.PATROL)
+            {
+                PatrolLevel();
+            }
+
+            if (_state == State.ALERT)
+            {
+                // Alert and move to target
+                _agent.SetDestination(_gameDirector.ShootNoizePosition);
+                Debug.DrawLine(transform.position, _gameDirector.ShootNoizePosition, Color.red);
+            }
+
+            if (_state == State.ATTACK)
+            {
+                _agent.SetDestination(_hitInfo.point);
+                Debug.DrawLine(transform.position, _hitInfo.point, Color.magenta);
+
+                _isAttack = true;
+            }
+            else if (_hitInfo.collider != null && !_hitInfo.collider.GetComponent<PlayerController>() && _state == State.ATTACK)
+            {
+                _isAttack = false;
+                _state = State.ALERT;
+
+                _agent.SetDestination(_lastKnownPlayerLocation);
+                StartCoroutine(WaitOnAlert());
+            }
+
+            // Rotrate character across the route. NavMeshAgent rotation workaround.
+            if (_agent.hasPath)
+            {
+                if (_nextWaypoint != (Vector2)_agent.path.corners[1])
+                {
+                    // Rotate to Y-axis facing
+                    StartCoroutine(RotateToWaypoint());
+                    _nextWaypoint = _agent.path.corners[1];
+                }
+            }
+
+            _animator.SetFloat("Speed", _agent.speed);
+        }  
     }
 
     private void OnDrawGizmos()
     {
         #region Gizmos on Y-axis as "Forward" direction
-        Vector3 viewAngle1 = DirectionFromAngle(transform.eulerAngles.z, -45);
-        Vector3 viewAngle2 = DirectionFromAngle(transform.eulerAngles.z, 45);
+        Vector3 viewAngle1 = GetDirectionFromAngle(transform.eulerAngles.z, -45);
+        Vector3 viewAngle2 = GetDirectionFromAngle(transform.eulerAngles.z, 45);
 
         // Forward direction
-        Gizmos.color = Color.red;
-        Gizmos.DrawRay(transform.position, transform.up * 7f);
+        //Gizmos.color = Color.red;
+        //Gizmos.DrawRay(transform.position, transform.up * 7f);
 
         // Left LOS border
         Gizmos.color = Color.green;
@@ -101,21 +142,6 @@ public class EnemyController : MonoBehaviour
         // Right LOS border
         Gizmos.color = Color.blue;
         Gizmos.DrawRay(transform.position, transform.up + viewAngle2 * 6f);
-        #endregion
-
-        #region Gizmos on Z-axis as "Forward" direction
-        //Vector3 viewAngle1 = DirectionFromAngleZ(transform.eulerAngles.y, -45);
-        //Vector3 viewAngle2 = DirectionFromAngleZ(transform.eulerAngles.y, 45);
-
-        //Gizmos.color = Color.red;
-        //Gizmos.DrawRay(transform.position, transform.forward * 7f);
-
-
-        //Gizmos.color = Color.green;
-        //Gizmos.DrawRay(transform.position, transform.forward + viewAngle1 * 6f);
-
-        //Gizmos.color = Color.blue;
-        //Gizmos.DrawRay(transform.position, transform.forward + viewAngle2 * 6f);
         #endregion
 
         if (_agent.hasPath)
@@ -130,22 +156,20 @@ public class EnemyController : MonoBehaviour
         }
     }
 
-    private Vector3 DirectionFromAngle(float eulerZ, float angleInDegrees)
+    private Vector3 GetDirectionFromAngle(float eulerZ, float angleInDegrees)
     {
         angleInDegrees -= eulerZ; // Rotation angle on Z-axis clockwise
 
         return new Vector3(Mathf.Sin(angleInDegrees * Mathf.Deg2Rad), Mathf.Cos(angleInDegrees * Mathf.Deg2Rad), 0);
     }
 
-    private Vector3 DirectionFromAngleZ(float eulerY, float angle)
-    {
-        angle += eulerY;
-
-        return new Vector3(Mathf.Sin(angle * Mathf.Deg2Rad), 0, Mathf.Cos(angle * Mathf.Deg2Rad));
-    }
-
+    /// <summary>
+    /// Patrol state
+    /// </summary>
     private void PatrolLevel()
     {
+        _agent.speed = _agentWalkSpeed;
+
         if (_agent.remainingDistance < .5f && _isGoingForward)
         {
             _agent.SetDestination(_patrolRoute[1].position);
@@ -158,6 +182,25 @@ public class EnemyController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Alert state
+    /// </summary>
+    private void GetOnAlert()
+    {
+        _state = State.ALERT;
+
+        _agent.speed = _agentRunSpeed;
+    }
+
+    private void GetOnAttack()
+    {
+        // Attacks player
+    }
+
+    /// <summary>
+    /// Rotation character to movement direction
+    /// </summary>
+    /// <returns></returns>
     IEnumerator RotateToWaypoint()
     {
         float rotateSpeed = 80f;
@@ -180,6 +223,12 @@ public class EnemyController : MonoBehaviour
         }
     }
 
+    IEnumerator WaitOnAlert()
+    {
+        yield return new WaitForSeconds(5f);
+        _state = State.PATROL;
+    }
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if(collision.GetComponent<Bullet>() != null && _gameDirector.Enemies[0] == this.gameObject)
@@ -187,6 +236,12 @@ public class EnemyController : MonoBehaviour
             if (OnEnemyDeath != null)
                 OnEnemyDeath(0);
             gameObject.SetActive(false);
+            _isAlive = false;
         }
+    }
+
+    private void OnDisable()
+    {
+        WeaponController.OnShotFired -= GetOnAlert;
     }
 }

@@ -2,8 +2,8 @@
 
 public class Bullet : MonoBehaviour, IGameObjectPooled
 { 
-    [SerializeField] private float _speed = 50f;
-    [SerializeField] private float _maxLifetime = 3f;
+    [SerializeField] private float _speed;
+    [SerializeField] private float _maxLifetime;
     private Rigidbody2D _rb2d;
     
     private float _lifetime; // Bullet lifetime
@@ -44,12 +44,12 @@ public class Bullet : MonoBehaviour, IGameObjectPooled
         _rb2d.AddForce(transform.up * _speed * Time.fixedDeltaTime, ForceMode2D.Impulse);
     }
 
-    private void OnTriggerEnter(Collider other)
+    private void OnTriggerEnter2D(Collider2D other)
     {
-        //if (other.CompareTag("Enemy") || other.CompareTag("Wall") || other.CompareTag("Player"))
-        //{
-        //    // Return Bullet to Pool after hit
-        //    Pool.ReturnToPool(this.gameObject);
-        //}      
+        if (other.CompareTag("Wall"))
+        {
+            // Return Bullet to Pool after hit
+            Pool.ReturnToPool(this.gameObject);
+        }      
     }
 }

@@ -1,21 +1,23 @@
 ﻿using UnityEngine;
 
-public class WeaponController : MonoBehaviour
+public class EnemyWeapon : MonoBehaviour
+
 {
     [SerializeField] private Transform _firePoint;
-    [SerializeField] private Transform _weapon;
     [SerializeField] private ObjectPool _bulletPool;
 
-    public delegate void ShotFired();
-    public static event ShotFired OnShotFired;
+    private EnemyController _enemyController;
+
+    private void Start()
+    {
+        _enemyController = GetComponent<EnemyController>();
+    }
 
     private void Update()
     {
-        if (Input.GetButtonDown("Fire1") && _weapon.parent != null)
+        if (_enemyController.IsAttack)
         {
             Fire();
-
-            OnShotFired?.Invoke();
         }
     }
 

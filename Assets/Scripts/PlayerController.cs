@@ -71,7 +71,7 @@ public class PlayerController : MonoBehaviour
 
     private void OnTriggerStay2D(Collider2D other)
     {
-        Debug.Log("TOUCH");
+        //Debug.Log("TOUCH");
         if (other.CompareTag("Weapon") && _weaponIsArmed == false && Input.GetKeyDown(KeyCode.E))
             PickWeapon();
     }
