@@ -6,7 +6,7 @@ public class EnemyController : MonoBehaviour
 {
     // Enemy AI states
     private enum State { PATROL, ALERT, ATTACK };
-    [SerializeField]private State _state;
+    [SerializeField]private State _currentState;
 
     private bool _isAlive;
     private bool _isAttack;
@@ -18,9 +18,11 @@ public class EnemyController : MonoBehaviour
     private float _angleToTarget;
     private float _agentWalkSpeed = 3.5f;
     private float _agentRunSpeed = 8f;
+    private float _rotateSpeed = 80f;
+    private float _alertWaitTime = 15f;
     [SerializeField] private Transform[] _patrolRoute;
 
-    private Vector2 _lastKnownPlayerLocation;
+    private RaycastHit2D _hitInfo;
 
     private Animator _animator;
 
@@ -35,7 +37,7 @@ public class EnemyController : MonoBehaviour
 
     private void OnEnable()
     {
-        WeaponController.OnShotFired += GetOnAlert;
+        WeaponController.OnShotFired += GetOnAlert; // Set all Enemies on alert
     }
 
     private void Start()
@@ -45,15 +47,13 @@ public class EnemyController : MonoBehaviour
         _gameDirector = FindObjectOfType<GameDirector>();
         _player = FindObjectOfType<PlayerController>();
 
+        _animator = GetComponentInChildren<Animator>();
+
         // Disable NavMeshAgent rotation
         _agent.updateRotation = false;
         _agent.updateUpAxis = false;
 
-        
-
-        _animator = GetComponentInChildren<Animator>();
-
-        _state = State.PATROL;
+        _currentState = State.PATROL;
 
         _isGoingForward = false;
 
@@ -64,50 +64,29 @@ public class EnemyController : MonoBehaviour
     {
         if (_isAlive)
         {
-            var _hitInfo = Physics2D.Raycast(transform.position, _player.transform.position - transform.position, 7f);
+            _hitInfo = Physics2D.Raycast(transform.position, _player.transform.position - transform.position, 7f);
 
-            if (_hitInfo.collider != null
-                    && _hitInfo.collider.GetComponent<PlayerController>()
-                    && Vector3.Angle(transform.up, _hitInfo.transform.position - transform.position) < 45f)
-            {
-                Debug.DrawLine(transform.position, _hitInfo.point, Color.magenta);
-                Debug.LogWarning("Busted!");
+            // If Player appeared in view
+            CheckFov();
 
-                _state = State.ATTACK;
-
-                _lastKnownPlayerLocation = _hitInfo.point;  
-            }
-            else
-            {
-                Debug.DrawLine(transform.position, _player.transform.position, Color.yellow);
-            }
-
-            if (_state == State.PATROL)
-            {
+            // Patrol state
+            if (_currentState == State.PATROL)
                 PatrolLevel();
+
+            // Attack state
+            if (_currentState == State.ATTACK)
+            { 
+                GetOnAttack();
             }
 
-            if (_state == State.ALERT)
+            if(_currentState == State.ALERT)
             {
-                // Alert and move to target
                 _agent.SetDestination(_gameDirector.ShootNoizePosition);
+
                 Debug.DrawLine(transform.position, _gameDirector.ShootNoizePosition, Color.red);
-            }
 
-            if (_state == State.ATTACK)
-            {
-                _agent.SetDestination(_hitInfo.point);
-                Debug.DrawLine(transform.position, _hitInfo.point, Color.magenta);
-
-                _isAttack = true;
-            }
-            else if (_hitInfo.collider != null && !_hitInfo.collider.GetComponent<PlayerController>() && _state == State.ATTACK)
-            {
-                _isAttack = false;
-                _state = State.ALERT;
-
-                _agent.SetDestination(_lastKnownPlayerLocation);
-                StartCoroutine(WaitOnAlert());
+                if (!_agent.hasPath)
+                    StartCoroutine(WaitOnAlert());
             }
 
             // Rotrate character across the route. NavMeshAgent rotation workaround.
@@ -121,6 +100,7 @@ public class EnemyController : MonoBehaviour
                 }
             }
 
+            // Character animator parameter
             _animator.SetFloat("Speed", _agent.speed);
         }  
     }
@@ -156,6 +136,12 @@ public class EnemyController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Calculate angle for dev UI view cone
+    /// </summary>
+    /// <param name="eulerZ"></param>
+    /// <param name="angleInDegrees"></param>
+    /// <returns></returns>
     private Vector3 GetDirectionFromAngle(float eulerZ, float angleInDegrees)
     {
         angleInDegrees -= eulerZ; // Rotation angle on Z-axis clockwise
@@ -164,18 +150,38 @@ public class EnemyController : MonoBehaviour
     }
 
     /// <summary>
-    /// Patrol state
+    /// Check if Player in Enemy FOV
+    /// </summary>
+    private void CheckFov()
+    {
+        if (_hitInfo.collider != null
+                    && _hitInfo.collider.GetComponent<PlayerController>()
+                    && Vector3.Angle(transform.up, _hitInfo.transform.position - transform.position) < 45f)
+        {
+            Debug.DrawLine(transform.position, _hitInfo.point, Color.magenta);
+            Debug.LogWarning("Busted!");
+
+            _currentState = State.ATTACK;
+        }
+        else
+        {
+            Debug.DrawLine(transform.position, _player.transform.position, Color.yellow);
+        }
+    }
+
+    /// <summary>
+    /// Patrol state method
     /// </summary>
     private void PatrolLevel()
     {
         _agent.speed = _agentWalkSpeed;
 
-        if (_agent.remainingDistance < .5f && _isGoingForward)
+        if (_agent.remainingDistance < 1f && _isGoingForward)
         {
             _agent.SetDestination(_patrolRoute[1].position);
             _isGoingForward = false;
         }
-        else if (_agent.remainingDistance < .5f && !_isGoingForward)
+        else if (_agent.remainingDistance < 1f && !_isGoingForward)
         {
             _isGoingForward = true;
             _agent.destination = _patrolRoute[0].position;
@@ -183,18 +189,27 @@ public class EnemyController : MonoBehaviour
     }
 
     /// <summary>
-    /// Alert state
+    /// Alert state method
     /// </summary>
     private void GetOnAlert()
     {
-        _state = State.ALERT;
-
+        StopAllCoroutines();
+        
+        _currentState = State.ALERT;
+        
         _agent.speed = _agentRunSpeed;
+        //_agent.SetDestination(_gameDirector.ShootNoizePosition); // Why ShootNoizePosition sets with previous value?
     }
 
+    /// <summary>
+    /// Attack state method
+    /// </summary>
     private void GetOnAttack()
     {
-        // Attacks player
+        _agent.SetDestination(_hitInfo.point);
+        _agent.speed = _agentRunSpeed;
+
+        _isAttack = true;
     }
 
     /// <summary>
@@ -203,8 +218,6 @@ public class EnemyController : MonoBehaviour
     /// <returns></returns>
     IEnumerator RotateToWaypoint()
     {
-        float rotateSpeed = 80f;
-
         Vector2 targetDirection = _agent.path.corners[1] - transform.position;
 
         _angleDifference = Vector2.SignedAngle(transform.up, targetDirection);
@@ -218,15 +231,21 @@ public class EnemyController : MonoBehaviour
         while(transform.localEulerAngles.z < _angleToTarget - 0.1f 
                 || transform.localEulerAngles.z > _angleToTarget + 0.1f)
         {
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(0, 0, _angleToTarget), rotateSpeed * Time.deltaTime);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(0, 0, _angleToTarget), _rotateSpeed * Time.deltaTime);
             yield return null;
         }
     }
 
+    /// <summary>
+    /// Wait until Alert fades away
+    /// </summary>
+    /// <returns></returns>
     IEnumerator WaitOnAlert()
     {
-        yield return new WaitForSeconds(5f);
-        _state = State.PATROL;
+        yield return new WaitForSeconds(_alertWaitTime);
+        _currentState = State.PATROL;
+
+        _agent.speed = _agentWalkSpeed;
     }
 
     private void OnTriggerEnter2D(Collider2D collision)

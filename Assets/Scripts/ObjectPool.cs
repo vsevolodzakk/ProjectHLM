@@ -19,7 +19,7 @@ public class ObjectPool : MonoBehaviour
     public GameObject Get()
     {
         if (_objects.Count == 0)
-            AddObjects(1);
+            AddObjects();
         return _objects.Dequeue();
     }
 
@@ -31,7 +31,7 @@ public class ObjectPool : MonoBehaviour
     }
 
     // Add more Object instances to Pool
-    private void AddObjects(int count)
+    private void AddObjects()
     {
         var _newObject = GameObject.Instantiate(_prefab);
         _newObject.SetActive(false);

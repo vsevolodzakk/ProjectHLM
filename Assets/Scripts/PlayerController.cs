@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
@@ -19,11 +18,17 @@ public class PlayerController : MonoBehaviour
 
     [SerializeField] Rigidbody2D _weapon;
 
+    [SerializeField] private Animator _animator;
+    [SerializeField] private AnimatorOverrideController[] _animatorOverride;
+    private int _currentAnimatorOverrideIndex;
+
     private void Start()
     {
         _playerRb = GetComponent<Rigidbody2D>();
         _weaponIsArmed = true;
-        //gameObject.GetComponent<Collider2D>().enabled = false;
+
+        _currentAnimatorOverrideIndex= 0;
+        _animator.runtimeAnimatorController = _animatorOverride[_currentAnimatorOverrideIndex];
     }
 
     private void Update()
@@ -34,6 +39,27 @@ public class PlayerController : MonoBehaviour
         _direction = new Vector2(_horizontal, _vertical);
         
         AimToCursor();
+
+        if (Input.GetKeyDown(KeyCode.E))
+            ThrowWeapon();
+
+        if (Input.GetKeyDown(KeyCode.Alpha1))
+            SwitchWeapon();
+
+        if (_direction != Vector2.zero)
+            _animator.SetFloat("Speed", 4f);
+        else
+            _animator.SetFloat("Speed", 0f);
+    }
+
+    private void SwitchWeapon()
+    {
+        _currentAnimatorOverrideIndex++;
+
+        if(_currentAnimatorOverrideIndex >= _animatorOverride.Length)
+            _currentAnimatorOverrideIndex = 0;
+
+        _animator.runtimeAnimatorController = _animatorOverride[_currentAnimatorOverrideIndex];
     }
 
     private void FixedUpdate()
@@ -53,16 +79,6 @@ public class PlayerController : MonoBehaviour
             ThrowWeapon();
     }
 
-    private void ThrowWeapon()
-    {
-        Debug.Log("DROP");
-        _weaponIsArmed = false;
-        _weapon.transform.parent = null;
-        _weapon.simulated = true;
-        //float _force = 20f;
-        //_weapon.AddForce(transform.up * _force, ForceMode2D.Impulse);  
-    }
-
     private void OnTriggerEnter2D(Collider2D other)
     {
         
@@ -74,6 +90,16 @@ public class PlayerController : MonoBehaviour
         //Debug.Log("TOUCH");
         if (other.CompareTag("Weapon") && _weaponIsArmed == false && Input.GetKeyDown(KeyCode.E))
             PickWeapon();
+    }
+
+    private void ThrowWeapon()
+    {
+        Debug.Log("DROP");
+        _weaponIsArmed = false;
+        _weapon.transform.parent = null;
+        _weapon.simulated = true;
+        //float _force = 20f;
+        //_weapon.AddForce(transform.up * _force, ForceMode2D.Impulse);  
     }
 
     private void PickWeapon()

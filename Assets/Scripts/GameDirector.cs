@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class GameDirector : MonoBehaviour
@@ -12,8 +10,6 @@ public class GameDirector : MonoBehaviour
     [SerializeField] private Vector2 _shootNoizePosition;
 
     public static GameDirector Instance { get; private set; }
-
-
 
     public Vector2 ShootNoizePosition 
     {

@@ -6,18 +6,25 @@ public class EnemyWeapon : MonoBehaviour
     [SerializeField] private Transform _firePoint;
     [SerializeField] private ObjectPool _bulletPool;
 
+    private float _shotCooldown = 0.7f;
+    private float _cooldown;
+
     private EnemyController _enemyController;
 
     private void Start()
     {
         _enemyController = GetComponent<EnemyController>();
+        _cooldown = _shotCooldown;
     }
 
     private void Update()
     {
-        if (_enemyController.IsAttack)
+        _cooldown -= Time.deltaTime;
+
+        if (_enemyController.IsAttack & _cooldown <= 0)
         {
             Fire();
+            _cooldown = _shotCooldown;
         }
     }
 
