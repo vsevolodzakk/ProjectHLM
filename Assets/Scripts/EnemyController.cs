@@ -4,36 +4,33 @@ using UnityEngine.AI;
 
 public class EnemyController : MonoBehaviour
 {
-    // Enemy AI states
-    private enum State { PATROL, ALERT, ATTACK };
-    [SerializeField]private State _currentState;
-
-    private bool _isAlive;
-    private bool _isAttack;
-
-    [SerializeField] NavMeshAgent _agent;
-    private bool _isGoingForward;
-    private Vector2 _nextWaypoint;
-    private float _angleDifference;
-    private float _angleToTarget;
     private float _agentWalkSpeed = 3.5f;
     private float _agentRunSpeed = 8f;
     private float _rotateSpeed = 80f;
     private float _alertWaitTime = 15f;
-    [SerializeField] private Transform[] _patrolRoute;
 
+    private float _angleDifference;
+    private float _angleToTarget;
+    private bool _isAlive;
+    private bool _isAttack;
+    private bool _isGoingForward;
+    private Vector2 _nextWaypoint;
     private RaycastHit2D _hitInfo;
-
     private Animator _animator;
-
     private GameDirector _gameDirector;
     private PlayerController _player;
-
-    public bool IsAttack => _isAttack;
+    [SerializeField] NavMeshAgent _agent;
+    [SerializeField] private Transform[] _patrolRoute;
 
     // Enemy Death event
     public delegate void EnemyDeath(int position);
     public static event EnemyDeath OnEnemyDeath;
+
+    // Enemy AI states
+    private enum State { PATROL, ALERT, ATTACK };
+    [SerializeField]private State _currentState;
+
+    public bool IsAttack => _isAttack;
 
     private void OnEnable()
     {
@@ -79,6 +76,7 @@ public class EnemyController : MonoBehaviour
                 GetOnAttack();
             }
 
+            // Alert state
             if(_currentState == State.ALERT)
             {
                 _agent.SetDestination(_gameDirector.ShootNoizePosition);
@@ -105,6 +103,9 @@ public class EnemyController : MonoBehaviour
         }  
     }
 
+    /// <summary>
+    /// Draw dev UI in editor
+    /// </summary>
     private void OnDrawGizmos()
     {
         #region Gizmos on Y-axis as "Forward" direction
@@ -205,10 +206,10 @@ public class EnemyController : MonoBehaviour
     /// Attack state method
     /// </summary>
     private void GetOnAttack()
-    {
+    {       
         _agent.SetDestination(_hitInfo.point);
         _agent.speed = _agentRunSpeed;
-
+        
         _isAttack = true;
     }
 
