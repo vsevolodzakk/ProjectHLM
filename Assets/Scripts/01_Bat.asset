@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58fbd3bccfa51464fa2be78f1370bb0c, type: 3}
   m_Name: 01_Bat
   m_EditorClassIdentifier: 
-  id: 1
-  weaponName: Bat
-  image: {fileID: 21300000, guid: 6a10ca32155e111489f985ef2b2529e9, type: 3}
-  isRanged: 0
-  attackSpeed: 0.4
-  stockAmmo: 1
+  _id: 1
+  _weaponName: Bat
+  _image: {fileID: 21300000, guid: 6a10ca32155e111489f985ef2b2529e9, type: 3}
+  _isRanged: 0
+  _attackSpeed: 0.2
+  _stockAmmo: 5

@@ -1,22 +1,32 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 public class WeaponController : MonoBehaviour
 {
     [SerializeField] private Transform _firePoint;
     [SerializeField] private ObjectPool _bulletPool;
+    [SerializeField] private int _ammoCount = 0;
+
+    // These needed to Instantiate "dropped" weapon Item
     [SerializeField] private GameObject _weaponItemTemplate;
     [SerializeField] private WeaponItemData _weaponItemData;
 
     [SerializeField] private bool _weaponIsArmed;
 
-    //public bool IsArmed { get { return _weaponIsArmed; } }
+    public List<WeaponItem> weaponItems= new List<WeaponItem>();
 
     public delegate void ShotFired();
     public static event ShotFired OnShotFired;
 
+    public delegate void WeaponPickedUp(WeaponItemData weaponData);
+    public static event WeaponPickedUp OnWeaponPickedUp;
+
+    public delegate void WeaponDroped();
+    public static event WeaponDroped OnWeaponDroped;
+
     private void OnEnable()
     {
-        WeaponItem.OnWeaponItemTaken += ArmWeapon;
+
     }
 
     private void Start()
@@ -26,18 +36,23 @@ public class WeaponController : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetButtonDown("Fire1") && _weaponIsArmed)
+        if (Input.GetButtonDown("Fire1") && _weaponIsArmed && _ammoCount > 0)
         {
             Fire();
 
             OnShotFired?.Invoke();
         }
 
-        if (_weaponIsArmed && Input.GetKeyDown(KeyCode.G))
-        { 
-
-            DropWeapon(); 
+        if(!_weaponIsArmed && weaponItems.Count > 0 && Input.GetKeyDown(KeyCode.E))
+        {
+            PickWeapon(weaponItems[0].weaponData);
+            OnWeaponPickedUp?.Invoke(weaponItems[0].weaponData);
             
+            Destroy(weaponItems[0].gameObject);
+        }
+        else if(_weaponIsArmed && Input.GetKeyDown(KeyCode.E))
+        {
+            DropWeapon();
         }
     }
 
@@ -48,25 +63,43 @@ public class WeaponController : MonoBehaviour
         _shot.transform.position = _firePoint.position;
 
         _shot.gameObject.SetActive(true);
+
+        --_ammoCount;
     }
 
-    private void ArmWeapon(WeaponItemData weaponData)
+    private void PickWeapon(WeaponItemData weaponData)
     {
         _weaponIsArmed = true;
         _weaponItemData= weaponData;
+
+        _ammoCount = weaponData.StockAmmo;
     }
 
     private void DropWeapon()
     {
         var item = Instantiate(_weaponItemTemplate, _firePoint.position, _firePoint.rotation);
-        item.GetComponent<SpriteRenderer>().sprite = _weaponItemData.image;
-        
-        //_weaponItemData = null;
+        item.GetComponent<SpriteRenderer>().sprite = _weaponItemData.Image;
+        item.name = _weaponItemData.name;
+
+        var itemData = item.GetComponent<WeaponItem>();
+        itemData.weaponData = _weaponItemData;
+        itemData.isDroped = true;
+        itemData.ammo = _ammoCount;
+
+
+        OnWeaponDroped?.Invoke();
+
         _weaponIsArmed = false;
+        _weaponItemData = null; // here needed to change ItemData to Fist .. or not?
     }
 
-    private void OnDisable()
+    private void OnTriggerEnter2D(Collider2D collision)
     {
-        WeaponItem.OnWeaponItemTaken -= ArmWeapon;
+        weaponItems.Add(collision.GetComponent<WeaponItem>());
+    }
+
+    private void OnTriggerExit2D(Collider2D collision)
+    {
+        weaponItems.Remove(collision.GetComponent<WeaponItem>());
     }
 }

@@ -1,40 +1,19 @@
-﻿using UnityEditor.XR;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class WeaponItem: MonoBehaviour
 {
-    [SerializeField] private WeaponItemData _weaponData;
-    private CircleCollider2D _pickupZoneTrigger;
-
-    private bool _isRanged;
-
-    public delegate void WeaponItemTaken(WeaponItemData weaponData);
-    public static event WeaponItemTaken OnWeaponItemTaken;
-
-    public bool IsRanged { get { return _isRanged; } }
+    public WeaponItemData weaponData;
+    public int ammo; // !!!
+    public bool isDroped = false;
 
     private void Start()
     {
-        _pickupZoneTrigger= GetComponent<CircleCollider2D>();
         var weaponImage = GetComponent<SpriteRenderer>();
 
-        if(_weaponData != null)
+        if (weaponData != null)
         {
-            weaponImage.sprite = _weaponData.image;
-            _isRanged = _weaponData.isRanged; //???
+            weaponImage.sprite = weaponData.Image;
+            if(!isDroped) ammo = weaponData.StockAmmo;
         }
-    }
-
-    private void PickupWeapon()
-    {
-        Destroy(gameObject); // for testing
-
-        OnWeaponItemTaken?.Invoke(_weaponData);
-    }
-
-    private void OnTriggerStay2D(Collider2D collision)
-    {
-        if(collision.CompareTag("Player") && Input.GetKeyDown(KeyCode.E))
-            PickupWeapon();
     }
 }
