@@ -11,7 +11,7 @@ public class EnemyController : MonoBehaviour
 
     private float _angleDifference;
     private float _angleToTarget;
-    private bool _isAlive;
+    [SerializeField] private bool _isAlive;
     private bool _isAttack;
     private bool _isGoingForward;
     private Vector2 _nextWaypoint;
@@ -31,6 +31,7 @@ public class EnemyController : MonoBehaviour
     [SerializeField]private State _currentState;
 
     public bool IsAttack => _isAttack;
+    public bool IsAlive => _isAlive;
 
     private void OnEnable()
     {
@@ -253,10 +254,10 @@ public class EnemyController : MonoBehaviour
     {
         if(collision.GetComponent<Bullet>() != null && _gameDirector.Enemies[0] == this.gameObject)
         {
+            _isAlive = false;
             if (OnEnemyDeath != null)
                 OnEnemyDeath(0);
-            gameObject.SetActive(false);
-            _isAlive = false;
+            gameObject.SetActive(false);   
         }
     }
 

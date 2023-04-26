@@ -15,6 +15,8 @@ public class WeaponController : MonoBehaviour
 
     public List<WeaponItem> weaponItems= new List<WeaponItem>();
 
+    public int AmmoCount { get { return _ammoCount; } }
+
     public delegate void ShotFired();
     public static event ShotFired OnShotFired;
 
@@ -36,7 +38,7 @@ public class WeaponController : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetButtonDown("Fire1") && _weaponIsArmed && _ammoCount > 0)
+        if (Input.GetButtonDown("Fire1") & _weaponIsArmed & _ammoCount > 0)
         {
             Fire();
 

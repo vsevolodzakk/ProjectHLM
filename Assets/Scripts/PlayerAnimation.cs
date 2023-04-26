@@ -8,6 +8,8 @@ public class PlayerAnimation : MonoBehaviour
     [SerializeField] private AnimatorOverrideController[] _animatorOverride;
     private int _currentAnimatorOverrideIndex;
 
+    [SerializeField] private WeaponController _playerWeapon;
+
     private void OnEnable()
     {
         WeaponController.OnWeaponPickedUp += SwitchCharacterWeaponView;
@@ -16,6 +18,8 @@ public class PlayerAnimation : MonoBehaviour
 
     private void Start()
     {
+        _playerWeapon = GetComponent<WeaponController>();
+
         _currentAnimatorOverrideIndex = 0;
         _animator.runtimeAnimatorController = _animatorOverride[_currentAnimatorOverrideIndex];
     }
@@ -24,7 +28,7 @@ public class PlayerAnimation : MonoBehaviour
     {
         _movement = GetComponent<PlayerController>().Direction;
 
-        if (Input.GetButtonDown("Fire1"))
+        if (Input.GetButtonDown("Fire1") & _playerWeapon.AmmoCount > 0)
             Attack();
 
         if (_movement != Vector2.zero)
